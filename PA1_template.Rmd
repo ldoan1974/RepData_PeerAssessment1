@@ -5,24 +5,151 @@ output:
     keep_md: true
 ---
 
-library(ggplot2)
-library(scales)
-library(Hmisc)
-
 ## Loading and preprocessing the data
 
+### Read data
+
+```{r echo=TRUE, results='asis'}
+if(!file.exists('activity.csv')){
+    unzip('activity.zip')
+}
+activity <- read.csv('activity.csv')
+```
+
+### Create a date.time column that combines the date and interval columns.
+
+```{r echo=TRUE, results='asis'}
+time <- formatC(activity$interval / 100, 2, format='f')
+activity$date.time <- as.POSIXct(paste(activity$date, time),
+                                 format='%Y-%m-%d %H.%M',
+                                 tz='GMT')
+```
+
+### convert all of the dates to be for today to find the mean in different of day.
+
+```{r echo=TRUE, results='asis'}
+activity$time <- format(activity$date.time, format='%H:%M:%S')
+activity$time <- as.POSIXct(activity$time, format='%H:%M:%S')
+```
 
 
-## What is mean total number of steps taken per day?
+
+## What is mean total number of steps taken per day? 
+
+### Calculate the mean number of steps for each day:
+
+```{r echo=TRUE, results='asis'}
+total.steps <- tapply(activity$steps, activity$date, sum, na.rm=TRUE)
+```
+
+### Mean and median of the total steps per day:
+
+```{r echo=TRUE, results='asis'}
+mean(total.steps)
+median(total.steps)
+```
+
+### Plot the Distribution of total number of steps per day:
+
+```{r echo=TRUE, results='asis'}
+library(ggplot2)
+qplot(total.steps, xlab='Total steps', ylab='Frequency')
+```
 
 
 
 ## What is the average daily activity pattern?
 
+### Calculate the mean steps for each five minute interval, and then put it in a data frame.
+```{r echo=TRUE, results='asis'}
+mean.steps <- tapply(activity$steps, activity$time, mean, na.rm=TRUE)
+daily.pattern <- data.frame(time=as.POSIXct(names(mean.steps)),
+                            mean.steps=mean.steps)
+```
+
+###Let's take a look at a time series plot for the mean steps.
+```{r echo=TRUE, results='asis'}
+library(scales)
+ggplot(daily.pattern, aes(time, mean.steps)) + 
+    geom_line() +
+    xlab('Time of day') +
+    ylab('Mean number of steps') +
+    scale_x_datetime(labels=date_format(format='%H:%M'))
+```
+
+### Which five minute interval has the highest mean number of steps?
+```{r echo=TRUE, results='asis'}
+most <- which.max(daily.pattern$mean.steps)
+format(daily.pattern[most,'time'], format='%H:%M')
+```
 
 
-## Imputing missing values
 
+## Input missing values
+
+### Identify the number of intervals with missing step counts ("NA's"):
+
+```{r echo=TRUE, results='asis'}
+summary(activity$steps)
+```
+
+### use mean steps for a five-minute interval for the entire dataset to fill in the missing values.
+```{r echo=TRUE, results='asis'}
+library(Hmisc)
+activity.imputed <- activity
+activity.imputed$steps <- with(activity.imputed, impute(steps, mean))
+```
+
+### Let's compare the mean and median steps for each day between the original data set and the input data set.
+```{r echo=TRUE, results='asis'}
+total.steps.imputed <- tapply(activity.imputed$steps, 
+                              activity.imputed$date, sum)
+mean(total.steps)
+mean(total.steps.imputed)
+median(total.steps)
+median(total.steps.imputed)
+```
+
+### Plot data set.
+```{r echo=TRUE, results='asis'}
+qplot(total.steps.imputed, xlab='Total steps', ylab='Frequency')
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### Add a factor column for whether a day is a weekday or weekend
+```{r echo=TRUE, results='asis'}
+day.type <- function(date) {
+    if (weekdays(date) %in% c('Saturday', 'Sunday')) {
+        return('weekend')
+    } else {
+        return('weekday')
+    }
+}
+
+day.types <- sapply(activity.imputed$date.time, day.type)
+activity.imputed$day.type <- as.factor(day.types)
+```
+
+### Create a dataframe that holds the mean steps for weekdays and weekends.
+```{r echo=TRUE, results='asis'}
+mean.steps <- tapply(activity.imputed$steps, 
+                     interaction(activity.imputed$time,
+                                 activity.imputed$day.type),
+                     mean, na.rm=TRUE)
+day.type.pattern <- data.frame(time=as.POSIXct(names(mean.steps)),
+                               mean.steps=mean.steps,
+                               day.type=as.factor(c(rep('weekday', 288),
+                                                   rep('weekend', 288))))
+```
+
+### Now let's compare the patterns between weekdays and weekends.
+```{r echo=TRUE, results='asis'}
+ggplot(day.type.pattern, aes(time, mean.steps)) + 
+    geom_line() +
+    xlab('Time of day') +
+    ylab('Mean number of steps') +
+    scale_x_datetime(labels=date_format(format='%H:%M')) +
+    facet_grid(. ~ day.type)
+```
