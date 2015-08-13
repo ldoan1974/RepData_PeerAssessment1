@@ -36,20 +36,20 @@ activity$time <- as.POSIXct(activity$time, format='%H:%M:%S')
 
 ## What is mean total number of steps taken per day? 
 
-### Calculate the mean number of steps for each day:
+### Calculate the total number of steps taken per day
 
 ```{r echo=TRUE, results='asis'}
 total.steps <- tapply(activity$steps, activity$date, sum, na.rm=TRUE)
 ```
 
-### Mean and median of the total steps per day:
+### Mean and median of the total number of steps taken per day:
 
 ```{r echo=TRUE, results='asis'}
 mean(total.steps)
 median(total.steps)
 ```
 
-### Plot the Distribution of total number of steps per day:
+### Plot the Distribution of total number of steps taken per day:
 
 ```{r echo=TRUE, results='asis'}
 library(ggplot2)
