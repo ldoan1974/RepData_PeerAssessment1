@@ -5,6 +5,9 @@ output:
     keep_md: true
 ---
 
+library(ggplot2)
+library(scales)
+library(Hmisc)
 
 ## Loading and preprocessing the data
 
